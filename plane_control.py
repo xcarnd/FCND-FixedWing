@@ -10,10 +10,13 @@ class Params(object):
         # monitor file changes if watchdog is installed
         # first, check if watchdog is installed
         self.params = {
-            "Kp_pitch":2.4,
+            "Kp_pitch": 2.4,
             "Kp_q": 0.1,
             "Kp_alt": 0.03,
             "Ki_alt": 0.02,
+            "Kp_speed": 0.15,
+            "Ki_speed": 0.05,
+            "T_ff": 0.667
         }
 
     def get(self, parma_name):
@@ -78,8 +81,8 @@ class LongitudinalAutoPilot(object):
         pitch_cmd = kp * e_alt
         # anti-windup. include the i term only when e_alt is small (10 meters?)
         if abs(e_alt) < 10:
-            self.speed_int += ki * e_alt * dt
-            pitch_cmd += self.speed_int
+            self.alt_int += e_alt * dt
+            pitch_cmd += ki * self.alt_int
         pitch_cmd = np.clip(pitch_cmd, -self.max_pitch_cmd, self.max_pitch_cmd)
                 
         return pitch_cmd
@@ -101,12 +104,14 @@ class LongitudinalAutoPilot(object):
         # STUDENT CODE HERE
         kp = self.params.get("Kp_speed")
         ki = self.params.get("Ki_speed")
+        t_ff = self.params.get("T_ff")
 
         e_speed = airspeed_cmd - airspeed
-        throttle_cmd = kp * e_speed
-        throttle_cmd += ki * e_speed * dt
+        throttle_cmd = kp * e_speed + t_ff
+        if abs(e_speed) < 3:
+            self.speed_int += e_speed * dt
+            throttle_cmd += ki * self.speed_int
         
-        throttle_cmd = 0.0
         return throttle_cmd
     """Used to calculate the pitch command required to maintain the commanded
     airspeed
