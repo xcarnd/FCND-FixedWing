@@ -1,6 +1,37 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+
+
 PI = 3.14159
+
+
+class Params(object):
+    def __init__(self, param_file='gains.txt'):
+        # monitor file changes if watchdog is installed
+        # first, check if watchdog is installed
+        self.param_file = param_file
+        self.params = {}
+        self.reload()
+
+    def reload(self):
+        self.params = {}
+        with open(self.param_file, 'r') as f:
+            for line in f.readlines():
+                idx = line.find('#')
+                if idx != -1:
+                    line = line[:idx]
+                line = line.strip()
+                if len(line) == 0:
+                    continue
+                kv = line.split(':')
+                if len(kv) != 2:
+                    print("Malformed parameter setting: {}. Skipped".format(kv))
+                self.params[kv[0]] = float(kv[1])
+
+    def get(self, parma_name):
+        return self.params[parma_name]
+
+
 class LongitudinalAutoPilot(object):
     def __init__(self):
         self.max_throttle_rpm = 2500
@@ -15,11 +46,7 @@ class LongitudinalAutoPilot(object):
         self.alt_int = 0.0
         self.climb_speed_int = 0.0
         
-        
-        
-        return
-    
-    
+        self.params = Params()
     
     """Used to calculate the elevator command required to acheive the target
     pitch
@@ -35,7 +62,12 @@ class LongitudinalAutoPilot(object):
     def pitch_loop(self, pitch, pitch_rate, pitch_cmd):
         elevator_cmd = 0.0
         # STUDENT CODE HERE
-        
+        kp = self.params.get("Kp_pitch")
+        kd = self.params.get("Kp_q")
+
+        e_pitch = pitch_cmd - pitch
+        elevator_cmd = kp * e_pitch - kd * pitch_rate
+        elevator_cmd = np.clip(elevator_cmd, -self.max_elevator, self.max_elevator) / self.max_elevator
         return elevator_cmd
     
     """Used to calculate the pitch command required to maintain the commanded
@@ -52,6 +84,15 @@ class LongitudinalAutoPilot(object):
     def altitude_loop(self, altitude, altitude_cmd, dt):
         pitch_cmd = 0.0
         # STUDENT CODE HERE
+        kp = self.params.get("Kp_alt")
+        ki = self.params.get("Ki_alt")
+
+        e_alt = altitude_cmd - altitude
+        pitch_cmd = kp * e_alt
+        # anti-windup. include the i term only when e_alt is small (10 meters?)
+        if e_alt < 10:
+            pitch_cmd += ki * e_alt * dt
+        pitch_cmd = np.clip(pitch_cmd, -self.max_pitch_cmd, self.max_pitch_cmd)
                 
         return pitch_cmd
     
