@@ -6,27 +6,15 @@ PI = 3.14159
 
 
 class Params(object):
-    def __init__(self, param_file='gains.txt'):
+    def __init__(self):
         # monitor file changes if watchdog is installed
         # first, check if watchdog is installed
-        self.param_file = param_file
-        self.params = {}
-        self.reload()
-
-    def reload(self):
-        self.params = {}
-        with open(self.param_file, 'r') as f:
-            for line in f.readlines():
-                idx = line.find('#')
-                if idx != -1:
-                    line = line[:idx]
-                line = line.strip()
-                if len(line) == 0:
-                    continue
-                kv = line.split(':')
-                if len(kv) != 2:
-                    print("Malformed parameter setting: {}. Skipped".format(kv))
-                self.params[kv[0]] = float(kv[1])
+        self.params = {
+            "Kp_pitch":2.4,
+            "Kp_q": 0.1,
+            "Kp_alt": 0.03,
+            "Ki_alt": 0.02,
+        }
 
     def get(self, parma_name):
         return self.params[parma_name]
@@ -64,7 +52,6 @@ class LongitudinalAutoPilot(object):
         # STUDENT CODE HERE
         kp = self.params.get("Kp_pitch")
         kd = self.params.get("Kp_q")
-
         e_pitch = pitch_cmd - pitch
         elevator_cmd = kp * e_pitch - kd * pitch_rate
         elevator_cmd = np.clip(elevator_cmd, -self.max_elevator, self.max_elevator) / self.max_elevator
@@ -90,8 +77,9 @@ class LongitudinalAutoPilot(object):
         e_alt = altitude_cmd - altitude
         pitch_cmd = kp * e_alt
         # anti-windup. include the i term only when e_alt is small (10 meters?)
-        if e_alt < 10:
-            pitch_cmd += ki * e_alt * dt
+        if abs(e_alt) < 10:
+            self.speed_int += ki * e_alt * dt
+            pitch_cmd += self.speed_int
         pitch_cmd = np.clip(pitch_cmd, -self.max_pitch_cmd, self.max_pitch_cmd)
                 
         return pitch_cmd
@@ -111,8 +99,14 @@ class LongitudinalAutoPilot(object):
     def airspeed_loop(self, airspeed, airspeed_cmd, dt):        
         throttle_cmd = 0.0
         # STUDENT CODE HERE
+        kp = self.params.get("Kp_speed")
+        ki = self.params.get("Ki_speed")
+
+        e_speed = airspeed_cmd - airspeed
+        throttle_cmd = kp * e_speed
+        throttle_cmd += ki * e_speed * dt
         
-        
+        throttle_cmd = 0.0
         return throttle_cmd
     """Used to calculate the pitch command required to maintain the commanded
     airspeed
@@ -128,8 +122,14 @@ class LongitudinalAutoPilot(object):
     def airspeed_pitch_loop(self, airspeed, airspeed_cmd, dt):
         pitch_cmd = 0.0
         # STUDENT CODE HERE
-        
-        
+        kp = self.params.get("Kp_speed2")
+        ki = self.params.get("Ki_speed2")
+
+        e_speed = airspeed_cmd - airspeed
+        pitch_cmd = kp * e_speed
+        pitch_cmd += ki * e_speed * dt
+
+        pitch_cmd = 0.0
         return pitch_cmd
     
     """Used to calculate the pitch command and throttle command based on the
