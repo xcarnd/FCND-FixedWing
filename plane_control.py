@@ -18,7 +18,8 @@ class Params(object):
             "Ki_speed": 0.05,
             "Kp_speed2": 0.15,
             "Ki_speed2": 0.08,
-            "T_ff": 0.667
+            "T_ff": 0.667,
+            "Trans_Hold_Climb_dalt": 30
         }
 
     def get(self, parma_name):
@@ -160,8 +161,21 @@ class LongitudinalAutoPilot(object):
         pitch_cmd = 0.0
         throttle_cmd = 0.0
         # STUDENT CODE HERE
-        
-        
+        dalt = self.params.get("Trans_Hold_Climb_dalt")
+        e_alt = altitude_cmd - altitude
+        if abs(e_alt) < dalt:
+            # into altitude hold mode
+            pitch_cmd = self.altitude_loop(altitude, altitude_cmd, dt)
+            throttle_cmd = self.airspeed_loop(airspeed, airspeed_cmd, dt)
+        else:
+            if e_alt > 0:
+                # into steady climb mode
+                throttle_cmd = 1
+            else:
+                # into steady descent mode
+                throttle_cmd = 0
+            pitch_cmd = self.airspeed_pitch_loop(airspeed, airspeed_cmd, dt)
+
         return[pitch_cmd, throttle_cmd]
 
 
