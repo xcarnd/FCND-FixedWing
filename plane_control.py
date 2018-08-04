@@ -10,6 +10,8 @@ class Params(object):
         # monitor file changes if watchdog is installed
         # first, check if watchdog is installed
         self.params = {
+            "Kp_roll": 0.0,
+            "Kp_p": 0.0,
             "Kp_pitch": 2.4,
             "Kp_q": 0.1,
             "Kp_alt": 0.03,
@@ -25,6 +27,8 @@ class Params(object):
     def get(self, parma_name):
         return self.params[parma_name]
 
+params = Params()
+
 
 class LongitudinalAutoPilot(object):
     def __init__(self):
@@ -39,8 +43,6 @@ class LongitudinalAutoPilot(object):
         self.speed_int = 0.0
         self.alt_int = 0.0
         self.climb_speed_int = 0.0
-        
-        self.params = Params()
     
     """Used to calculate the elevator command required to acheive the target
     pitch
@@ -56,8 +58,8 @@ class LongitudinalAutoPilot(object):
     def pitch_loop(self, pitch, pitch_rate, pitch_cmd):
         elevator_cmd = 0.0
         # STUDENT CODE HERE
-        kp = self.params.get("Kp_pitch")
-        kd = self.params.get("Kp_q")
+        kp = params.get("Kp_pitch")
+        kd = params.get("Kp_q")
         e_pitch = pitch_cmd - pitch
         elevator_cmd = kp * e_pitch - kd * pitch_rate
         elevator_cmd = np.clip(elevator_cmd, -self.max_elevator, self.max_elevator) / self.max_elevator
@@ -77,8 +79,8 @@ class LongitudinalAutoPilot(object):
     def altitude_loop(self, altitude, altitude_cmd, dt):
         pitch_cmd = 0.0
         # STUDENT CODE HERE
-        kp = self.params.get("Kp_alt")
-        ki = self.params.get("Ki_alt")
+        kp = params.get("Kp_alt")
+        ki = params.get("Ki_alt")
 
         e_alt = altitude_cmd - altitude
         pitch_cmd = kp * e_alt
@@ -105,9 +107,9 @@ class LongitudinalAutoPilot(object):
     def airspeed_loop(self, airspeed, airspeed_cmd, dt):        
         throttle_cmd = 0.0
         # STUDENT CODE HERE
-        kp = self.params.get("Kp_speed")
-        ki = self.params.get("Ki_speed")
-        t_ff = self.params.get("T_ff")
+        kp = params.get("Kp_speed")
+        ki = params.get("Ki_speed")
+        t_ff = params.get("T_ff")
 
         e_speed = airspeed_cmd - airspeed
         throttle_cmd = kp * e_speed + t_ff
@@ -130,8 +132,8 @@ class LongitudinalAutoPilot(object):
     def airspeed_pitch_loop(self, airspeed, airspeed_cmd, dt):
         pitch_cmd = 0.0
         # STUDENT CODE HERE
-        kp = self.params.get("Kp_speed2")
-        ki = self.params.get("Ki_speed2")
+        kp = params.get("Kp_speed2")
+        ki = params.get("Ki_speed2")
 
         e_speed = airspeed_cmd - airspeed
         pitch_cmd = kp * e_speed
@@ -161,7 +163,7 @@ class LongitudinalAutoPilot(object):
         pitch_cmd = 0.0
         throttle_cmd = 0.0
         # STUDENT CODE HERE
-        dalt = self.params.get("Trans_Hold_Climb_dalt")
+        dalt = params.get("Trans_Hold_Climb_dalt")
         e_alt = altitude_cmd - altitude
         if abs(e_alt) < dalt:
             # into altitude hold mode
@@ -210,8 +212,6 @@ class LateralAutoPilot:
                                 T_s = 0.0):
         aileron = 0
         # STUDENT CODE HERE
-        
-
         return aileron
 
     """Used to calculate the commanded roll angle from the course/yaw angle
