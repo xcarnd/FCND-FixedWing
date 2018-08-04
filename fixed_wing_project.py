@@ -289,7 +289,7 @@ class FixedWingProject(Udaciplane):
             print('Starting Yaw Hold Scenario')
             self.airspeed_cmd = 41.0
             self.altitude_cmd = 450.0
-            self.yaw_cmd = 0.0;
+            self.yaw_cmd = 0.0
             self.sideslip_cmd = 0.0
             self.roll_ff = 0.0
         elif(self.scenario == Scenario.LINE):
