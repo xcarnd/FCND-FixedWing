@@ -16,6 +16,8 @@ class Params(object):
             "Ki_alt": 0.02,
             "Kp_speed": 0.15,
             "Ki_speed": 0.05,
+            "Kp_speed2": 0.15,
+            "Ki_speed2": 0.08,
             "T_ff": 0.667
         }
 
@@ -132,9 +134,11 @@ class LongitudinalAutoPilot(object):
 
         e_speed = airspeed_cmd - airspeed
         pitch_cmd = kp * e_speed
-        pitch_cmd += ki * e_speed * dt
+        if abs(e_speed) < 5:
+            self.climb_speed_int += e_speed * dt
+            pitch_cmd += ki * self.climb_speed_int
 
-        pitch_cmd = 0.0
+        pitch_cmd = np.clip(-pitch_cmd, -self.max_pitch_cmd2, self.max_pitch_cmd2)
         return pitch_cmd
     
     """Used to calculate the pitch command and throttle command based on the
