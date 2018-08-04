@@ -10,8 +10,8 @@ class Params(object):
         # monitor file changes if watchdog is installed
         # first, check if watchdog is installed
         self.params = {
-            "Kp_roll": 0.0,
-            "Kp_p": 0.0,
+            "Kp_roll": 20.0,
+            "Kp_p": 0.3,
             "Kp_pitch": 2.4,
             "Kp_q": 0.1,
             "Kp_alt": 0.03,
@@ -212,6 +212,11 @@ class LateralAutoPilot:
                                 T_s = 0.0):
         aileron = 0
         # STUDENT CODE HERE
+        kp = params.get("Kp_roll")
+        kd = params.get("Kp_p")
+        e_phi = phi_cmd - phi
+        cmd = kp * e_phi - kd * roll_rate
+        aileron = np.clip(cmd / self.max_roll, -1.0, 1.0)
         return aileron
 
     """Used to calculate the commanded roll angle from the course/yaw angle
