@@ -10,20 +10,20 @@ class Params(object):
         # monitor file changes if watchdog is installed
         # first, check if watchdog is installed
         self.params = {
-            "Kp_roll": 20.0,
+            "Kp_roll": 18.0,
             "Kp_p": 0.3,
             "Kp_pitch": 2.4,
-            "Kp_q": 0.1,
+            "Kp_q": 0.3,
             "Kp_alt": 0.03,
             "Ki_alt": 0.02,
             "Kp_speed": 0.15,
             "Ki_speed": 0.05,
-            "Kp_speed2": -0.15,
+            "Kp_speed2": -0.12,
             "Ki_speed2": -0.08,
             "T_ff": 0.667,
             "Trans_Hold_Climb_dalt": 30,
-            "Kp_sideslip": -3,
-            "Ki_sideslip": 0.01,
+            "Kp_sideslip": -1.8,
+            "Ki_sideslip": 0.15,
 
         }
 
