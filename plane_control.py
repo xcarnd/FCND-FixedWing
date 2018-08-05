@@ -10,10 +10,12 @@ class Params(object):
         # monitor file changes if watchdog is installed
         # first, check if watchdog is installed
         self.params = {
-            "Kp_roll": 18.0,
-            "Kp_p": 0.3,
+            "Kp_roll": 14.0,
+            "Kp_p": 0.15,
             "Kp_pitch": 2.4,
             "Kp_q": 0.3,
+            "Kp_yaw": 2.6,
+            "Ki_yaw": 0.2,
             "Kp_alt": 0.03,
             "Ki_alt": 0.02,
             "Kp_speed": 0.15,
@@ -23,7 +25,7 @@ class Params(object):
             "T_ff": 0.667,
             "Trans_Hold_Climb_dalt": 30,
             "Kp_sideslip": -1.8,
-            "Ki_sideslip": 0.15,
+            "Ki_sideslip": -0.15,
 
         }
 
@@ -240,7 +242,18 @@ class LateralAutoPilot:
         roll_cmd = 0
         
         # STUDENT CODE HERE
-        
+        kp = params.get("Kp_yaw")
+        ki = params.get("Ki_yaw")
+        e_yaw = yaw_cmd - yaw
+        while e_yaw > np.pi:
+            e_yaw -= 2 * np.pi
+        while e_yaw < -np.pi:
+            e_yaw += 2 * np.pi
+        roll_cmd = kp * e_yaw
+        if abs(e_yaw) < 0.1:
+            self.integrator_yaw += e_yaw * T_s
+            roll_cmd += ki * self.integrator_yaw
+        roll_cmd = np.clip(roll_cmd, -self.max_roll, self.max_roll)
         
         return roll_cmd
 
@@ -261,9 +274,10 @@ class LateralAutoPilot:
         # STUDENT CODE HERE
         kp = params.get("Kp_sideslip")
         ki = params.get("Ki_sideslip")
-        cmd = kp * -beta
+        e = -beta
+        cmd = kp * e
         if abs(beta) < 0.2:
-            self.integrator_beta += beta * T_s
+            self.integrator_beta += e * T_s
             cmd += ki * self.integrator_beta
         rudder = np.clip(cmd, -1, 1)
         return rudder
