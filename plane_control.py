@@ -18,10 +18,13 @@ class Params(object):
             "Ki_alt": 0.02,
             "Kp_speed": 0.15,
             "Ki_speed": 0.05,
-            "Kp_speed2": 0.15,
-            "Ki_speed2": 0.08,
+            "Kp_speed2": -0.15,
+            "Ki_speed2": -0.08,
             "T_ff": 0.667,
-            "Trans_Hold_Climb_dalt": 30
+            "Trans_Hold_Climb_dalt": 30,
+            "Kp_sideslip": -3,
+            "Ki_sideslip": 0.01,
+
         }
 
     def get(self, parma_name):
@@ -141,7 +144,7 @@ class LongitudinalAutoPilot(object):
             self.climb_speed_int += e_speed * dt
             pitch_cmd += ki * self.climb_speed_int
 
-        pitch_cmd = np.clip(-pitch_cmd, -self.max_pitch_cmd2, self.max_pitch_cmd2)
+        pitch_cmd = np.clip(pitch_cmd, -self.max_pitch_cmd2, self.max_pitch_cmd2)
         return pitch_cmd
     
     """Used to calculate the pitch command and throttle command based on the
@@ -172,10 +175,10 @@ class LongitudinalAutoPilot(object):
         else:
             if e_alt > 0:
                 # into steady climb mode
-                throttle_cmd = 1
+                throttle_cmd = self.max_throttle
             else:
                 # into steady descent mode
-                throttle_cmd = 0
+                throttle_cmd = self.min_throttle
             pitch_cmd = self.airspeed_pitch_loop(airspeed, airspeed_cmd, dt)
 
         return[pitch_cmd, throttle_cmd]
@@ -191,7 +194,6 @@ class LateralAutoPilot:
         self.gate = 1
         self.max_roll = 60*np.pi/180.0
         self.state = 1
-
 
 
     """Used to calculate the commanded aileron based on the roll error
@@ -257,8 +259,13 @@ class LateralAutoPilot:
                            T_s):
         rudder = 0
         # STUDENT CODE HERE
-        
-        
+        kp = params.get("Kp_sideslip")
+        ki = params.get("Ki_sideslip")
+        cmd = kp * -beta
+        if abs(beta) < 0.2:
+            self.integrator_beta += beta * T_s
+            cmd += ki * self.integrator_beta
+        rudder = np.clip(cmd, -1, 1)
         return rudder
     
     """Used to calculate the desired course angle based on cross-track error
