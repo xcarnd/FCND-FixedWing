@@ -202,6 +202,22 @@ class LateralAutoPilot:
                                [600, -680],
                                [-450, -680]])
 
+        self.s12gates = [None,
+                         None,
+                         (np.array([2100, 500]), np.array([0, 1])),
+                         (np.array([2600, -1119]), np.array([0, 1])),
+                         (np.array([984, -560]), np.array(-6, -5))]
+        self.s12tpoints = [None,
+                           None,
+                           (np.array([2600, 0]), np.array(1, 0)),
+                           (np.array([1715, -1439]), np.array(-6, -5)),
+                           (np.array([100, -881]), np.array([1, 0]))]
+        self.s12centers = [None,
+                           None,
+                            (np.array([2100, 0]), False),
+                            (np.array([1715, -1439]), False),
+                            (np.array([100, -881]), True)]
+
     """Used to calculate the commanded aileron based on the roll error
     
         Args:
@@ -457,8 +473,56 @@ class LateralAutoPilot:
         cycle = False
         
         # STUDENT CODE HERE
-        
-        
+        if self.state > 4:
+            return (0, 0, False)
+        prev_waypoint, current_waypoint, next_waypoint = waypoint_tuple
+        orbit_info = self.s12centers[self.state]
+        do_line_following = False
+        if orbit_info is not None:
+            orbit_center, cw = orbit_info
+            # we may need to transit from line -> orbit or orbit -> line
+            # if gate is passed, perform line -> orbit transition
+            # else, if transition point passed, peform orbit -> line transition
+            gate, normal = self.s12gates[self.state]
+            gp = local_position - gate
+            gate_passed = np.cross(gp, normal) > 0
+
+            tpoint, normal = self.s12tpoints[self.state]
+            tp = local_position - tpoint
+            tpoint_passed = np.cross(tp, normal) > 0
+
+            if gate_passed and tpoint_passed:
+                # gate passed and tpoint passed, back into line following
+                do_line_following = True
+                cycle = True
+            elif gate_passed:
+                # gate passed but tpoint not passed. turn into orbit with the specific orbit center
+                do_line_following = False
+                cycle = False
+            else:
+                # gate is not passed yet. continue line following
+                do_line_following = True
+                cycle = False
+        else:
+            # no orbit center information. do line following
+            do_line_following = True
+            dist_to_next_wp = np.linalg.norm(local_position - next_waypoint)
+            cycle = dist_to_next_wp < 5
+
+        if do_line_following:
+            # line following
+            print("Straight-Line following into current waypoint: {}", current_waypoint)
+            direction = current_waypoint - prev_waypoint
+            line_course = np.arctan2(direction[1], direction[0])
+            yaw_cmd = self.straight_line_guidance(prev_waypoint, line_course, local_position)
+        else:
+            print("Orbit around {} until transition point {}", orbit_center, self.s12tpoints[self.state][0])
+            yaw_cmd = self.orbit_guidance(orbit_center, 500, local_position, yaw, cw)
+            roll_ff = self.coordinated_turn_ff(airspeed_cmd, 500, cw)
+
+                 
+        if cycle:
+            self.state += 1
         
         return(roll_ff, yaw_cmd, cycle)
 
