@@ -202,11 +202,10 @@ class LateralAutoPilot:
                                [600, -680],
                                [-450, -680]])
 
-        self.s12gates = [None,
-                         None,
-                         (np.array([2100, 500]), np.array([0, 1])),
-                         (np.array([2600, -1119]), np.array([0, 1])),
-                         (np.array([984, -560]), np.array([-6, -5]))]
+        self.s12next_gates = [None,
+                                (np.array([2100, 500]), np.array([0, 1])),
+                                (np.array([2600, -1119]), np.array([0, 1])),
+                                (np.array([984, -560]), np.array([-6, -5]))]
         self.s12tpoints = [None,
                            None,
                            (np.array([2600, 0]), np.array([1, 0])),
@@ -323,8 +322,12 @@ class LateralAutoPilot:
         pd = po + np.array([np.cos(line_course), np.sin(line_course)])
 
         error = np.cross(pp - po, pd - po) / np.linalg.norm(pd - po)
-        course_cmd = kp * error + line_course
-        
+        course_cmd = np.clip(kp * error, -np.pi/4, np.pi/4) + line_course
+
+        while course_cmd > np.pi:
+            course_cmd -= 2 * np.pi
+        while course_cmd < -np.pi:
+            course_cmd += 2 * np.pi
         return course_cmd
     
     """Used to calculate the desired course angle based on radius error from
@@ -402,8 +405,6 @@ class LateralAutoPilot:
         roll_ff = np.arctan(speed ** 2 / (self.g * radius))
         if not cw:
             roll_ff = -roll_ff
-
-        print(roll_ff)
         return roll_ff
 
     """Used to calculate the desired course angle and feed-forward roll
@@ -475,8 +476,9 @@ class LateralAutoPilot:
         roll_ff = 0.0
         yaw_cmd = 0.0
         cycle = False
-        
+
         # STUDENT CODE HERE
+        # warning: local_position contains only N & E information!
         if self.state > 4:
             return (0, 0, False)
         prev_waypoint, current_waypoint, next_waypoint = waypoint_tuple
@@ -510,14 +512,15 @@ class LateralAutoPilot:
         else:
             # no orbit center information. do line following
             do_line_following = True
-            dist_to_next_wp = np.linalg.norm(local_position - next_waypoint)
-            cycle = dist_to_next_wp < 5
+            dist_to_wp = np.linalg.norm(local_position - current_waypoint[:2])
+            print(dist_to_wp)
+            cycle = dist_to_wp < 5
 
         if do_line_following:
             # line following
-            print("Straight-Line following into current waypoint: {}", current_waypoint)
-            direction = current_waypoint - prev_waypoint
+            direction = current_waypoint[:2] - prev_waypoint[:2]
             line_course = np.arctan2(direction[1], direction[0])
+            print("Straight-Line following into current waypoint: {}, course: {}".format(current_waypoint, line_course))
             yaw_cmd = self.straight_line_guidance(prev_waypoint, line_course, local_position)
         else:
             print("Orbit around {} until transition point {}", orbit_center, self.s12tpoints[self.state][0])
@@ -527,7 +530,6 @@ class LateralAutoPilot:
                  
         if cycle:
             self.state += 1
-        
         return(roll_ff, yaw_cmd, cycle)
 
 
