@@ -26,6 +26,7 @@ class Params(object):
             "Trans_Hold_Climb_dalt": 30,
             "Kp_sideslip": -1.8,
             "Ki_sideslip": -0.15,
+            "K_track": 0.008
 
         }
 
@@ -297,7 +298,13 @@ class LateralAutoPilot:
                                local_position):
         course_cmd = 0
         # STUDENT CODE HERE
-        
+        kp = params.get("K_track")
+        po = np.array(line_origin)[:2]
+        pp = np.array(local_position)[:2]
+        pd = po + np.array([np.cos(line_course), np.sin(line_course)])
+
+        error = np.cross(pp - po, pd - po) / np.linalg.norm(pd - po)
+        course_cmd = kp * error + line_course
         
         return course_cmd
     
