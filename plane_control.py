@@ -26,8 +26,8 @@ class Params(object):
             "Trans_Hold_Climb_dalt": 30,
             "Kp_sideslip": -1.8,
             "Ki_sideslip": -0.15,
-            "K_track": 0.008
-
+            "K_track": 0.008,
+            "Kp_orbit": 0.062
         }
 
     def get(self, parma_name):
@@ -324,9 +324,25 @@ class LateralAutoPilot:
     def orbit_guidance(self, orbit_center, orbit_radius, local_position, yaw,
                        clockwise = True):
         course_cmd = 0
+        kp = params.get("Kp_orbit")
         # STUDENT CODE HERE
-        
-        
+        po = np.array(orbit_center)[:2]
+        pp = np.array(local_position)[:2]
+        op = pp - po
+        actual_radius = np.linalg.norm(op)
+        e_radius = orbit_radius - actual_radius
+        course_cmd = kp * e_radius * -1 if clockwise else 1
+
+        heading = np.arctan2(op[1], op[0])
+        course_ff = heading + (np.pi / 2 if clockwise else -np.pi / 2)
+
+        #d = np.linalg.norm(pp - pe)
+        #a = np.arcsin(d / 2 / actual_radius) * 2
+        #course_ff = (a + np.pi / 2) * (1 if clockwise else -1)
+        # course_cmd += course_ff
+        #course_cmd = course_ff
+        #print(po, pp, pe, course_cmd)
+        course_cmd += course_ff
         return course_cmd
 
     """Used to calculate the feedforward roll angle for a constant radius
@@ -344,8 +360,23 @@ class LateralAutoPilot:
         
         roll_ff = 0
         # STUDENT CODE HERE
-        
-        
+        # equations for the math:
+        # F: lift force
+        # theta: roll angle
+        # r: turning radis
+        # m: mass
+        # g: gravity constant
+        # v: aircraft speed (linear velocity)
+        #
+        # for level flight, F * cos(theta) = m * g
+        # when performing cyclic movement, centripetal force Fr = m * v**2 / R
+        # and Fr = F * sin(theta)
+        # so:
+        # F * cos(theta) = Fr / sin(theta) = m * v** 2 * cos(theta) / (R * sin(theta)) = m * g
+        # g * R = v ** 2 * cos(theta) / sin(theta)
+        # tan(theta) = v ** 2 / (g * R)
+        # theta = arctan(v ** 2 / (g * R))
+        roll_ff = np.arctan(speed ** 2 / (self.g * radius)) * (1 if cw else -1)
         return roll_ff
 
     """Used to calculate the desired course angle and feed-forward roll
