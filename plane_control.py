@@ -27,7 +27,7 @@ class Params(object):
             "Kp_sideslip": -1.8,
             "Ki_sideslip": -0.15,
             "K_track": 0.008,
-            "Kp_orbit": 0.066
+            "Kp_orbit": 0.03
         }
 
     def get(self, parma_name):
@@ -206,11 +206,11 @@ class LateralAutoPilot:
                          None,
                          (np.array([2100, 500]), np.array([0, 1])),
                          (np.array([2600, -1119]), np.array([0, 1])),
-                         (np.array([984, -560]), np.array(-6, -5))]
+                         (np.array([984, -560]), np.array([-6, -5]))]
         self.s12tpoints = [None,
                            None,
-                           (np.array([2600, 0]), np.array(1, 0)),
-                           (np.array([1715, -1439]), np.array(-6, -5)),
+                           (np.array([2600, 0]), np.array([1, 0])),
+                           (np.array([1715, -1439]), np.array([-6, -5])),
                            (np.array([100, -881]), np.array([1, 0]))]
         self.s12centers = [None,
                            None,
@@ -269,7 +269,7 @@ class LateralAutoPilot:
             e_yaw -= 2 * np.pi
         while e_yaw < -np.pi:
             e_yaw += 2 * np.pi
-        roll_cmd = kp * e_yaw
+        roll_cmd = kp * e_yaw + roll_ff
         if abs(e_yaw) < 0.1:
             self.integrator_yaw += e_yaw * T_s
             roll_cmd += ki * self.integrator_yaw
@@ -399,9 +399,11 @@ class LateralAutoPilot:
         # g * R = v ** 2 * cos(theta) / sin(theta)
         # tan(theta) = v ** 2 / (g * R)
         # theta = arctan(v ** 2 / (g * R))
-        roll_ff = np.arctan(speed ** 2 / (self.g * radius)) * (1 if cw else -1)
+        roll_ff = np.arctan(speed ** 2 / (self.g * radius))
         if not cw:
             roll_ff = -roll_ff
+
+        print(roll_ff)
         return roll_ff
 
     """Used to calculate the desired course angle and feed-forward roll
@@ -427,6 +429,8 @@ class LateralAutoPilot:
         if dist_to_gate < 10:
             print(dist_to_gate)
             self.gate += 1
+            self.integrator_beta = 0
+            self.integrator_yaw = 0
             print("Gate #{}: {}".format(self.gate, self.gates[self.gate - 1]))
         if self.gate == 1:
             line_origin = np.array([0, 20])
