@@ -27,7 +27,7 @@ class Params(object):
             "Kp_sideslip": -1.8,
             "Ki_sideslip": -0.15,
             "K_track": 0.008,
-            "Kp_orbit": 0.062
+            "Kp_orbit": 0.066
         }
 
     def get(self, parma_name):
@@ -197,7 +197,10 @@ class LateralAutoPilot:
         self.gate = 1
         self.max_roll = 60*np.pi/180.0
         self.state = 1
-
+        self.gates = np.array([[500, 20],
+                               [900, -380],
+                               [600, -680],
+                               [-450, -680]])
 
     """Used to calculate the commanded aileron based on the roll error
     
@@ -331,18 +334,22 @@ class LateralAutoPilot:
         op = pp - po
         actual_radius = np.linalg.norm(op)
         e_radius = orbit_radius - actual_radius
-        course_cmd = kp * e_radius * -1 if clockwise else 1
+        if clockwise:
+            course_cmd = -kp * e_radius
+        else:
+            course_cmd = kp * e_radius
 
         heading = np.arctan2(op[1], op[0])
-        course_ff = heading + (np.pi / 2 if clockwise else -np.pi / 2)
+        if clockwise:
+            course_ff = heading + (np.pi / 2)
+        else:
+            course_ff = heading - (np.pi / 2)
 
-        #d = np.linalg.norm(pp - pe)
-        #a = np.arcsin(d / 2 / actual_radius) * 2
-        #course_ff = (a + np.pi / 2) * (1 if clockwise else -1)
-        # course_cmd += course_ff
-        #course_cmd = course_ff
-        #print(po, pp, pe, course_cmd)
         course_cmd += course_ff
+        while course_cmd > np.pi:
+            course_cmd -= 2 * np.pi
+        while course_cmd < -np.pi:
+            course_cmd += 2 * np.pi
         return course_cmd
 
     """Used to calculate the feedforward roll angle for a constant radius
@@ -377,6 +384,8 @@ class LateralAutoPilot:
         # tan(theta) = v ** 2 / (g * R)
         # theta = arctan(v ** 2 / (g * R))
         roll_ff = np.arctan(speed ** 2 / (self.g * radius)) * (1 if cw else -1)
+        if not cw:
+            roll_ff = -roll_ff
         return roll_ff
 
     """Used to calculate the desired course angle and feed-forward roll
@@ -393,11 +402,36 @@ class LateralAutoPilot:
             yaw_cmd: commanded yaw/course in radians
     """
     def path_manager(self, local_position, yaw, airspeed_cmd):
-        
         roll_ff = 0
         yaw_cmd = 0
         # STUDENT CODE HERE
-        
+        if self.gate > 4:
+            return [0, 0]
+        dist_to_gate = np.linalg.norm(np.array(local_position)[:2] - self.gates[self.gate - 1])
+        if dist_to_gate < 10:
+            print(dist_to_gate)
+            self.gate += 1
+            print("Gate #{}: {}".format(self.gate, self.gates[self.gate - 1]))
+        if self.gate == 1:
+            line_origin = np.array([0, 20])
+            line_course = 0.0
+            yaw_cmd = self.straight_line_guidance(line_origin, line_course, local_position)
+        elif self.gate == 2:
+            orbit_center = np.array([500, -380])
+            orbit_radius = 400.0
+            cw = False
+            yaw_cmd = self.orbit_guidance(orbit_center, orbit_radius, local_position, yaw, cw)
+            roll_ff = self.coordinated_turn_ff(airspeed_cmd, orbit_radius, cw)
+        elif self.gate == 3:
+            orbit_center = np.array([600, -380])
+            orbit_radius = 300.0
+            cw = False
+            yaw_cmd = self.orbit_guidance(orbit_center, orbit_radius, local_position, yaw, cw)
+            roll_ff = self.coordinated_turn_ff(airspeed_cmd, orbit_radius, cw)
+        else: # self.gate == 4
+            line_origin = np.array([600, -680])
+            line_course = np.pi
+            yaw_cmd = self.straight_line_guidance(line_origin, line_course, local_position)
         
         return(roll_ff,yaw_cmd)
     
